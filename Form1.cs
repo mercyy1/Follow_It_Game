@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics.Eventing.Reader;
 
 namespace FollowIt
 {
@@ -8,7 +7,10 @@ namespace FollowIt
     {
         int score;
         int highestScore;
-        const string HighestScoreFile = "highestscore.txt";
+        int previousHighestScore;
+        // Keep the save file in the user's AppData folder so it doesn't depend on where the game is launched from.
+        static readonly string HighestScoreFile = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "FollowIt", "highestscore.txt");
         const int _cellWidth = 75;
         const int _cellHeight = 75;
         const int _gridX = 300;
@@ -58,30 +60,18 @@ namespace FollowIt
 
         private void LoadHighestScore()
         {
-            if (File.Exists(HighestScoreFile))
+            highestScore = 0;
+            if (File.Exists(HighestScoreFile) && int.TryParse(File.ReadAllText(HighestScoreFile).Trim(), out int saved))
             {
-                using (StreamReader reader = new StreamReader(HighestScoreFile))
-                {
-                    string file = File.ReadAllText(HighestScoreFile);
-                    if (!int.TryParse(file, out highestScore))
-                    {
-                        highestScore = 0;
-                    }
-                }
-
+                highestScore = saved;
             }
-            else
-            {
-                highestScore = 0;
-                using (StreamWriter writer = new StreamWriter(HighestScoreFile, false))
-                {
-                    writer.WriteLine(highestScore);
-                }
-            }
+            // Remember the record at the start of this run so "new high score" means beating it, not tying it.
+            previousHighestScore = highestScore;
         }
 
         private void SaveScore()
         {
+            Directory.CreateDirectory(Path.GetDirectoryName(HighestScoreFile)!);
             File.WriteAllText(HighestScoreFile, highestScore.ToString());
         }
 
@@ -280,9 +270,9 @@ namespace FollowIt
                 case GameState.GameOver:
                     SaveScore();
                     timer1.Stop();
-                    if (highestScore == score)
+                    if (score > previousHighestScore)
                     {
-                        MessageBox.Show("Congratulationss!! New High score", "👑 NEW HIGHSCORE!");
+                        MessageBox.Show("Congratulations!! New high score", "👑 NEW HIGHSCORE!");
                     }
                     MessageBox.Show($"Game Over!! \nFINAL SCORE: {score} \nHIGHEST SCORE: {highestScore}", "☠ GAME OVER");
                     Close();
